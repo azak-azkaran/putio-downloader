@@ -8,7 +8,9 @@ env:
         secure: "k/J8NPzdpa1H4crv/18iOEURKQBhRk9ztfj+fzw6IKIAH7S6nnyKyDN65IGU6ppJc85bj3kC1YQWu7j43oPOWMhG39hRTdNC6IydPb1NEQv53ls4Q50ORodlE01/vN8Po90Vi7L0TiAtsdoIOFpiPemgSMyOGYBMUs9at5S/jngUuppqPiM2GBiaj8/3NQMNIHu3v/VQ4Do8ppYQRWCJoh11BIEx6undYMDkBbjQo6MuGQNAHlKmewLxWkIdAGh9etbMCIo5JAyeA06BkHIdzMFRJcwsFwcd5CY5yznKbjQomzsE/UOUPGzZwbLbDO55SSRNpR0p+g4gMj7wjNXyG1zhnpXfg3l4cq2r9fjW3uE57oiNFDpgLFO7u/zfcQ3YobI9qnBdC80xJxlYzsSRp1Ptn4MgzSdb5wNlUFo1DYlNKNrahHCDTygCoSLJHArNjU32sE5bPMD7/Tja40+8484O64w+J7sosNgP5Wh55S+/etn4vsx9hT8ZjhEDl9gQWgsDSFdy3dY/zZ6moM61UgOwDploS72UGU3DE1B/UBgT/25gX/cqtZdCfv3RipWzwNNTJkncuSJbrqayBdPrYfOpBnT0BCuCI6BSYT2qn6uc8+G/RNb/vf0Ghnd3ny1GIWMcqyIpFktqjw4g4Y3OAcVBioOzMrX6BgcFZY+s3EA="
 
 language: go
-sudo: false
+sudo: 'required'
+services:
+  - docker
 go:
   - tip
 before_install:
@@ -17,7 +19,12 @@ before_install:
   - sudo apt-get install findutils
 script:
   - go get ./...
-  - make coverage
+  - make docker
   # other script steps might be done before running the actual analysis
   - $GOPATH/bin/goveralls -service=travis-ci
   - sonar-scanner
+after_success:
+    - if [[ "$TRAVIS_BRANCH" == "master" ]]; then
+        docker login -u $DOCKER_USER -p $DOCKER_TOKEN ;
+        make push-image ;
+      fi

@@ -9,6 +9,9 @@ build: fetch
 	@echo Building to current folder
 	go build -i -v -ldflags="-X main.version=${VERSION}" 
 
+docker: test
+	docker build -t azakazkaran/putio-downloader .
+
 install: build
 	@echo Installing to ${GOPATH}/bin
 	go install
@@ -27,3 +30,6 @@ coverage: test
 
 clean:
 	go clean
+
+push-image:
+	docker push azakazkaran/putio-downloader:latest
