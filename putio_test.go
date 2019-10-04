@@ -33,9 +33,7 @@ func Test_AddFolders(t *testing.T) {
 	AddFolders(0, conf)
 
 	time.Sleep(1 * time.Millisecond)
-	if FolderQueue.Len() != 10 {
-		t.Error("Queue does not have the right size: ", FolderQueue.Len())
-	}
+	assert.True(t, FolderQueue.Len() == 10)
 
 	for {
 		item := FolderQueue.Pop()
@@ -58,9 +56,7 @@ func Test_CreateLink(t *testing.T) {
 	CreateLink(conf, one)
 
 	time.Sleep(10 * time.Millisecond)
-	if FolderQueue.Len() != 10 {
-		t.Error("Queue does not have the right size: ", FolderQueue.Len())
-	}
+	assert.True(t, FolderQueue.Len() == 10)
 	for {
 		item := FolderQueue.Pop()
 		if item == nil {
@@ -79,9 +75,7 @@ func Test_AddLinks(t *testing.T) {
 
 	time.Sleep(1 * time.Millisecond)
 
-	if LinkMap.Count() == 0 {
-		t.Error("Link Map is empty")
-	}
+	assert.NotEqual(t, LinkMap.Count(), 0)
 
 	for {
 		item := FolderQueue.Pop()
@@ -94,11 +88,6 @@ func Test_AddLinks(t *testing.T) {
 func Test_CreateConfiguration(t *testing.T) {
 	fmt.Println("Running Test_CreateConfiguration")
 	conf := CreateConfiguration("blub")
-	if conf.client == nil {
-		t.Error("Configuration was not created proberly")
-	}
-
-	if conf.listFunc == nil {
-		t.Error("Configuration is missing the list function")
-	}
+	assert.NotNil(t, conf)
+	assert.NotNil(t, conf.listFunc)
 }
