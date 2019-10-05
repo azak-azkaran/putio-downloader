@@ -18,6 +18,7 @@ before_install:
   - sudo apt-get install findutils
 script:
   - go get ./...
+  - make coverage
   - make docker
   # other script steps might be done before running the actual analysis
   - sonar-scanner

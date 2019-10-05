@@ -2,92 +2,90 @@ package main
 
 import (
 	"context"
-	"log"
 	"strconv"
 	"strings"
 
 	"github.com/DamnWidget/goqueue"
-	"github.com/orcaman/concurrent-map"
 	"github.com/putdotio/go-putio/putio"
-	"golang.org/x/oauth2"
-	"net/http"
 	"time"
 )
 
-type Configuration struct {
-	oauthToken  string
-	oauthClient *http.Client
-	client      *putio.Client
-	listFunc    func(ctx context.Context, id int64) (children []putio.File, parent putio.File, err error)
-}
-
-type PutioObject struct {
-	ID   int64
-	Link string
-	Name string
-	file putio.File
-}
-
 var FolderQueue = goqueue.New()
-var LinkMap = cmap.New()
 
 func AddObject(value PutioObject) {
-	log.Println("Adding: ", value.ID, ": ", value.Name, "\t", value.Link)
-	LinkMap.Set(strconv.FormatInt(value.ID, 10), value)
+	id := strconv.FormatInt(value.ID, 10)
+	if value.IsDir {
+		Info.Printf("Found Folder: %s%s/%s%s", yellow, value.Foldername, value.Name, reset)
+	} else {
+		Info.Printf("Adding: %s%s%s: %s%s%s\t%s", cyan, id, reset, yellow, value.Foldername, reset, value.Name)
+		FileQueue.Push(id)
+	}
+	LinkMap.SetIfAbsent(id, value)
 }
 
-func CreateConfiguration(oauthToken string) Configuration {
-	var conf Configuration
-	if len(oauthToken) > 0 {
-		conf.oauthToken = oauthToken
-		tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: conf.oauthToken})
-		conf.oauthClient = oauth2.NewClient(context.TODO(), tokenSource)
-		conf.client = putio.NewClient(conf.oauthClient)
-		conf.listFunc = conf.client.Files.List
-		log.Println("Using oauth Token: ", conf.oauthToken)
-	} else {
-		log.Fatalln("No Token found")
-		panic("No Token found")
+func CreateFileLink(conf Configuration, value putio.File) {
+	if LinkMap.Has(strconv.FormatInt(value.ID, 10)) {
+		return
 	}
-	return conf
+	var current PutioObject
+	var builder strings.Builder
+	builder.WriteString("https://api.put.io/v2/files/")
+	builder.WriteString(strconv.FormatInt(value.ID, 10))
+	builder.WriteString("/download?oauth_token=")
+	builder.WriteString(conf.oauthToken)
+	currentlink := builder.String()
+	current.ID = value.ID
+	current.Link = currentlink
+	current.Name = value.Name
+	current.file = value
+	current.IsDir = false
+	parent, success := LinkMap.Get(strconv.FormatInt(value.ParentID, 10))
+	if success {
+		current.Foldername = parent.(PutioObject).Foldername + "/" + parent.(PutioObject).Name
+	} else {
+		current.Foldername = "/"
+	}
+
+	current.AddRequest = AddURI(currentlink)
+	current.StatusRequest = TellStatus(currentlink)
+	AddObject(current)
 }
 
-func CreateLink(conf Configuration, value putio.File) {
-	if value.IsDir() {
-		go AddFolders(value.ID, conf)
-	} else {
-		go func(token string, value putio.File) {
-			var current PutioObject
-			var builder strings.Builder
-			builder.WriteString("https://api.put.io/v2/files/")
-			builder.WriteString(strconv.FormatInt(value.ID, 10))
-			builder.WriteString("/download?oauth_token=")
-			builder.WriteString(token)
-			currentlink := builder.String()
-			current.ID = value.ID
-			current.Link = currentlink
-			current.Name = value.Name
-			current.file = value
-			AddObject(current)
-		}(conf.oauthToken, value)
+func CreateFolder(conf Configuration, value putio.File) {
+	if LinkMap.Has(strconv.FormatInt(value.ID, 10)) {
+		return
 	}
+
+	var current PutioObject
+	current.ID = value.ID
+	current.Name = value.Name
+	current.file = value
+	current.IsDir = true
+
+	parent, success := LinkMap.Get(strconv.FormatInt(value.ParentID, 10))
+	if success {
+		current.Foldername = parent.(PutioObject).Foldername + "/" + parent.(PutioObject).Name
+	}
+	AddObject(current)
 }
 
 func AddFolders(dir int64, conf Configuration) {
-	log.Println("Checking folder: ", strconv.FormatInt(dir, 10))
+	Info.Printf("Checking folder: %s%s%s", cyan, strconv.FormatInt(dir, 10), reset)
 	list, _, err := conf.listFunc(context.Background(), dir)
 	if err != nil {
-		log.Println("error folder:", err)
+		Error.Println("error folder:", err)
 	}
 
 	for _, value := range list {
-		FolderQueue.Push(value)
+		err = FolderQueue.Push(value)
+		if err != nil {
+			Error.Println("Error while pushing to Queue:", err)
+		}
 	}
 }
 
 func AddLinks(conf Configuration) {
 	AddFolders(0, conf)
-
 	for {
 		value := FolderQueue.Pop()
 		if value == nil {
@@ -95,7 +93,14 @@ func AddLinks(conf Configuration) {
 			if FolderQueue.Len() == 0 {
 				break
 			}
+		} else {
+			file := value.(putio.File)
+			if file.IsDir() {
+				CreateFolder(conf, file)
+				AddFolders(file.ID, conf)
+			} else {
+				CreateFileLink(conf, file)
+			}
 		}
-		CreateLink(conf, value.(putio.File))
 	}
 }
