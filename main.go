@@ -84,6 +84,8 @@ func main() {
 	conf := CreateConfiguration(os.Getenv("PUTIO_TOKEN"), os.Getenv("ARIA2_HOST"))
 
 	Info.Println("Starting")
+	addingDownloads = true
+	checkStatus = true
 	for {
 		go AddLinks(conf)
 		Info.Println("Running check for new Files")
