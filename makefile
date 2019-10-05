@@ -2,6 +2,7 @@ VERSION := $(shell git describe --always --long --dirty)
 all: install
 
 fetch:
+	@go get -u github.com/gin-gonic/gin
 	@go get -u github.com/stretchr/testify
 	@go get -u ./...
 
