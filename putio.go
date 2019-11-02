@@ -18,7 +18,11 @@ func AddObject(value PutioObject) {
 		Info.Printf("Found Folder: %s%s/%s%s", yellow, value.Foldername, value.Name, reset)
 	} else {
 		Info.Printf("Adding: %s%s%s: %s%s%s\t%s", cyan, id, reset, yellow, value.Foldername, reset, value.Name)
-		FileQueue.Push(id)
+		err := FileQueue.Push(id)
+
+		if err != nil {
+			Error.Println("Error while Pushing ID:", id, "\n", err)
+		}
 	}
 	LinkMap.SetIfAbsent(id, value)
 }

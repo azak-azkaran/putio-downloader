@@ -1,0 +1,44 @@
+{
+  "id": "qwer",
+  "jsonrpc": "2.0",
+  "result": {
+    "completedLength": "0",
+    "connections": "0",
+    "dir": "/downloads",
+    "downloadSpeed": "0",
+    "files": [
+      {
+        "completedLength": "0",
+        "index": "1",
+        "length": "0",
+        "path": "",
+        "selected": "true",
+        "uris": [
+          {
+            "status": "waiting",
+            "uri": "uri"
+          },
+          {
+            "status": "waiting",
+            "uri": "uri"
+          },
+          {
+            "status": "waiting",
+            "uri": "uri"
+          },
+          {
+            "status": "waiting",
+            "uri": "uri"
+          }
+        ]
+      }
+    ],
+    "gid": "c2ffa4612472368a",
+    "numPieces": "0",
+    "pieceLength": "1048576",
+    "status": "waiting",
+    "totalLength": "0",
+    "uploadLength": "0",
+    "uploadSpeed": "0"
+  }
+}

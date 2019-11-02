@@ -86,14 +86,15 @@ func main() {
 	Info.Println("Starting")
 	addingDownloads = true
 	checkStatus = true
+	checkCompleted = true
 	for {
 		go AddLinks(conf)
 		Info.Println("Running check for new Files")
 		go AddDownloads(conf)
 		go CheckStatus(conf)
+		go CheckCompleted()
 		Info.Println("Starting Download")
-		time.Sleep(10 * time.Second)
+		time.Sleep(5 * time.Second)
 		Info.Println("still alive")
-		panic("TODO has to be remove")
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/DamnWidget/goqueue"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -19,6 +20,12 @@ type AriaResponse struct {
 	Error   AriaError
 }
 
+type AriaStatusResponse struct {
+	Id      string
+	Jsonrpc string
+	Result  AriaResult
+	Error   AriaError
+}
 type AriaError struct {
 	Code    int
 	Message string
@@ -36,6 +43,36 @@ type TellStatusRequest struct {
 	ID      string   `json:"id"`
 	Method  string   `json:"method"`
 	Params  []string `json:"params"`
+}
+
+type AriaResult struct {
+	//	Bitfield        string
+	CompletedLength string
+	Connections     string
+	Dir             string
+	DownloadSpeed   string
+	Files           []AriaFiles
+	Gid             string
+	NumPieces       string
+	PieceLength     string
+	Status          string
+	TotalLength     string
+	UploadLength    string
+	UploadSpeed     string
+}
+
+type AriaFiles struct {
+	Index           string
+	Length          string
+	CompletedLength string
+	Path            string
+	Selected        string
+	Uris            []AriaUri
+}
+
+type AriaUri struct {
+	Uri    string
+	status string
 }
 
 func AddURI(link string) AddUriRequest {
@@ -58,75 +95,108 @@ func TellStatus(link string) TellStatusRequest {
 	return request
 }
 
-func SendTellStatus(id string, v PutioObject, conf Configuration) (AriaResponse, error) {
-	resp, err := send(v.StatusRequest, conf)
+func SendTellStatus(id string, v PutioObject, conf Configuration) (*AriaStatusResponse, error) {
+	dump, err := send(v.StatusRequest, conf)
 	if err != nil {
-		Error.Println("Error")
-		return resp, err
+		return nil, err
 	}
-	//Info.Printf("%s%s%s", yellow, resp, reset)
-	return resp, nil
+
+	var resp AriaStatusResponse
+	reader := bytes.NewReader(dump)
+	decoder := json.NewDecoder(reader)
+	err = decoder.Decode(&resp)
+	if err != nil {
+		Error.Printf("recieved: %s%s%s", yellow, string(dump), reset)
+		Error.Println("Error while decoding json response:", err)
+		return nil, err
+	}
+	return &resp, nil
 }
 
-func SendAddUri(id string, v PutioObject, conf Configuration) (AriaResponse, error) {
-	resp, err := send(v.AddRequest, conf)
+func SendAddUri(id string, v PutioObject, conf Configuration) (*AriaResponse, error) {
+	dump, err := send(v.AddRequest, conf)
 	if err != nil {
-		return resp, err
+		return nil, err
+	}
+	var resp AriaResponse
+	reader := bytes.NewReader(dump)
+	decoder := json.NewDecoder(reader)
+	err = decoder.Decode(&resp)
+	if err != nil {
+		Error.Printf("recieved: %s%s%s", yellow, string(dump), reset)
+		Error.Println("Error while decoding json response:", err)
+		return nil, err
 	}
 	v.StatusRequest = TellStatus(resp.Result)
-	Info.Printf("%s%s%s", yellow, v.StatusRequest, reset)
 	LinkMap.Set(id, v)
-	return resp, nil
+	return &resp, nil
 }
 
-func send(value interface{}, conf Configuration) (AriaResponse, error) {
-	var r AriaResponse
+func send(value interface{}, conf Configuration) ([]byte, error) {
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
 	err := encoder.Encode(&value)
 	if err != nil {
 		Error.Println("Error encoding json request:", err)
-		return r, err
+		return nil, err
 	}
 	aria := http.Client{}
-	Info.Printf("Sending %s to %s%s%s", value, yellow, conf.aria2, reset)
+	//Info.Printf("Sending %s to %s%s%s", value, yellow, conf.aria2, reset)
 	resp, err := aria.Post(conf.aria2, "application/json", &buf)
 	//if err != nil || resp.StatusCode != http.StatusOK {
 	if err != nil {
 		Error.Println("Error sending json request:", err)
-		return r, err
+		return nil, err
 	}
 	defer resp.Body.Close()
-	decoder := json.NewDecoder(resp.Body)
-	err = decoder.Decode(&r)
+	dump, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		Error.Println("Error while decoding json response:", err)
-		return r, err
+		return nil, err
 	}
-	//Info.Printf("Response: %s%s%s", magenta, r, reset)
-	return r, nil
+	return dump, nil
 }
 
 func AddDownloads(conf Configuration) {
+	var err error
 	for addingDownloads {
 		id := FileQueue.Pop()
 		if id != nil {
 			file, success := LinkMap.Get(id.(string))
 			if success {
-				SendAddUri(id.(string), file.(PutioObject), conf)
+				_, err = SendAddUri(id.(string), file.(PutioObject), conf)
+				if err != nil {
+					Error.Println("Error sending AddUri request:", err)
+				}
 			}
-			StatusQueue.Push(id)
+			err = StatusQueue.Push(id)
+			if err != nil {
+				Error.Println("Error while Pushing ID:", id, "\n", err)
+			}
 		}
 	}
 }
 
 func CheckStatus(conf Configuration) {
+	var err error
 	for checkStatus {
 		id := StatusQueue.Pop()
 		if id != nil {
 			file, success := LinkMap.Get(id.(string))
 			if success {
-				SendTellStatus(id.(string), file.(PutioObject), conf)
+				_, err = SendTellStatus(id.(string), file.(PutioObject), conf)
+				if err != nil {
+					Error.Println("Error sending SendTellStatus request:", err)
+				}
+				//if resp.Result.Status == "complete" {
+				err = CompletedQueue.Push(id)
+
+				if err != nil {
+					Error.Println("Error while Pushing ID:", id, "\n", err)
+				}
+				//} else {
+				//Info.Printf("Status of Request %s: %s", id.(string), resp.Result.Status)
+				//StatusQueue.Push(id)
+				//}
 			}
 		}
 	}

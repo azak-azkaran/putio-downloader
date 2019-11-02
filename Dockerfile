@@ -6,6 +6,7 @@ RUN apk --no-cache add git make shadow && \
 RUN go get  github.com/azak-azkaran/putio-downloader
 WORKDIR /go/src/github.com/azak-azkaran/putio-downloader
 COPY *.go ./
+COPY makefile ./
 RUN make install
 
 ENTRYPOINT ["/go/bin/putio-downloader"]

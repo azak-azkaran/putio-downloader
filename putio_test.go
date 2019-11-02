@@ -10,6 +10,13 @@ import (
 	"time"
 )
 
+func clearLinkMap(t *testing.T) {
+	for id := range LinkMap.Items() {
+		LinkMap.Remove(id)
+	}
+	assert.True(t, LinkMap.IsEmpty())
+}
+
 func returnList(ctx context.Context, id int64) ([]putio.File, putio.File, error) {
 	var one putio.File
 
@@ -40,6 +47,7 @@ func Test_AddFolders(t *testing.T) {
 			break
 		}
 	}
+	clearLinkMap(t)
 }
 
 func Test_CreateFileLink(t *testing.T) {
@@ -54,12 +62,37 @@ func Test_CreateFileLink(t *testing.T) {
 	one.Name = "Folder" + strconv.FormatInt(id, 10)
 	one.ContentType = "application/x-directory"
 	CreateFileLink(conf, one)
-
-	time.Sleep(10 * time.Millisecond)
 	assert.False(t, LinkMap.IsEmpty())
-	assert.Equal(t, 1, LinkMap.Count())
-	LinkMap.Remove(strconv.FormatInt(id, 10))
-	assert.True(t, LinkMap.IsEmpty())
+	assert.Equal(t, 1, LinkMap.Count(), LinkMap.Items())
+
+	var two putio.File
+	two.ParentID = id
+	id = int64(1)
+	two.ID = id
+	two.Name = "File" + strconv.FormatInt(id, 10)
+	CreateFileLink(conf, two)
+
+	assert.False(t, LinkMap.IsEmpty())
+	assert.Equal(t, 2, LinkMap.Count(), LinkMap.Items())
+	clearLinkMap(t)
+}
+
+func Test_CreateFolder(t *testing.T) {
+	fmt.Println("Running Test_CreateFolder")
+	var conf Configuration
+	conf.oauthToken = "blub"
+	conf.listFunc = returnList
+
+	var one putio.File
+	id := int64(0)
+	one.ID = id
+	one.Name = "Folder" + strconv.FormatInt(id, 10)
+	one.ContentType = "application/x-directory"
+	CreateFolder(conf, one)
+	assert.EqualValues(t, LinkMap.Count(), 1)
+	CreateFolder(conf, one)
+	assert.EqualValues(t, LinkMap.Count(), 1)
+	clearLinkMap(t)
 }
 
 func Test_AddLinks(t *testing.T) {
@@ -80,6 +113,7 @@ func Test_AddLinks(t *testing.T) {
 			break
 		}
 	}
+	clearLinkMap(t)
 }
 
 func Test_CreateConfiguration(t *testing.T) {

@@ -8,24 +8,17 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 )
 
-type AriaResult struct {
-	Bitfield        int
-	CompletedLength int
-	Connections     int
-	Dir             string
-	DownloadSpeed   int
-	Files           string
-	Gid             string
-	NumPieces       int
-	PieceLength     int
-	Status          string
-	TotalLength     int
-	UploadLength    int
-	UploadSpeed     int
+func startServer(server *http.Server, t *testing.T) {
+	go func() {
+		err := server.ListenAndServe()
+		assert.Equal(t, err, http.ErrServerClosed)
+	}()
+	fmt.Println("Starting Server...")
 }
 
 func MockHTTPServer(returnValue string) *gin.Engine {
@@ -33,7 +26,7 @@ func MockHTTPServer(returnValue string) *gin.Engine {
 	r.POST("/jsonrpc", func(ctx *gin.Context) {
 		switch returnValue {
 		case "ERROR":
-			resp := AriaResponse{Id: "qwer", Jsonrpc: "2.0", Error: AriaError{Code: 1, Message: "No such download for GID#e5b086a949391fac"}}
+			resp := AriaStatusResponse{Id: "qwer", Jsonrpc: "2.0", Error: AriaError{Code: 1, Message: "No such download for GID#e5b086a949391fac"}}
 			ctx.JSON(http.StatusBadRequest, resp)
 		case "DOWNLOAD":
 			resp := AriaResponse{Id: "qwer", Jsonrpc: "2.0", Result: "e5b086a949391fac"}
@@ -72,7 +65,7 @@ func Test_SendStatus(t *testing.T) {
 		Addr:    "localhost:6800",
 		Handler: MockHTTPServer("ERROR"),
 	}
-	go server.ListenAndServe()
+	startServer(&server, t)
 
 	time.Sleep(10 * time.Millisecond)
 	var v PutioObject
@@ -97,7 +90,7 @@ func Test_SendAddUri(t *testing.T) {
 		Addr:    "localhost:6800",
 		Handler: MockHTTPServer("DOWNLOAD"),
 	}
-	go server.ListenAndServe()
+	startServer(&server, t)
 
 	time.Sleep(10 * time.Millisecond)
 	var v PutioObject
@@ -128,7 +121,7 @@ func Test_AddDownloads(t *testing.T) {
 		Addr:    "localhost:6800",
 		Handler: MockHTTPServer("DOWNLOAD"),
 	}
-	go server.ListenAndServe()
+	startServer(&server, t)
 	go AddDownloads(config)
 
 	time.Sleep(10 * time.Millisecond)
@@ -152,4 +145,15 @@ func Test_AddDownloads(t *testing.T) {
 	err = server.Shutdown(context.Background())
 	assert.NoError(t, err)
 	addingDownloads = false
+}
+
+func Test_DecodeAriaStatusResponse(t *testing.T) {
+	fmt.Println("Running Test_DecodeAriaStatusResponse")
+	jsonFile, err := os.Open("AriaStatusResponse.json")
+	assert.NoError(t, err)
+
+	var resp AriaStatusResponse
+	decoder := json.NewDecoder(jsonFile)
+	err = decoder.Decode(&resp)
+	assert.NoError(t, err)
 }

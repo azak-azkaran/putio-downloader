@@ -1,0 +1,44 @@
+{
+  "id": "qwer",
+  "jsonrpc": "2.0",
+  "result": {
+    "completedLength": "0",
+    "connections": "0",
+    "dir": "/downloads",
+    "downloadSpeed": "0",
+    "files": [
+      {
+        "completedLength": "0",
+        "index": "1",
+        "length": "0",
+        "path": "",
+        "selected": "true",
+        "uris": [
+          {
+            "status": "waiting",
+            "uri": "https://api.put.io/v2/files/515941022/download?oauth_token=L7WKUSDJPLVHIIKMMUTS"
+          },
+          {
+            "status": "waiting",
+            "uri": "https://api.put.io/v2/files/515941022/download?oauth_token=L7WKUSDJPLVHIIKMMUTS"
+          },
+          {
+            "status": "waiting",
+            "uri": "https://api.put.io/v2/files/515941022/download?oauth_token=L7WKUSDJPLVHIIKMMUTS"
+          },
+          {
+            "status": "waiting",
+            "uri": "https://api.put.io/v2/files/515941022/download?oauth_token=L7WKUSDJPLVHIIKMMUTS"
+          }
+        ]
+      }
+    ],
+    "gid": "72423062f4db5a50",
+    "numPieces": "0",
+    "pieceLength": "1048576",
+    "status": "waiting",
+    "totalLength": "0",
+    "uploadLength": "0",
+    "uploadSpeed": "0"
+  }
+}
